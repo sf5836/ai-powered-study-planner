@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend Lint, Test, Security
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      NODE_ENV: test
+      PORT: 5000
+      MONGODB_URI: mongodb://127.0.0.1:27017/studyplanner_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      AI_SERVICE_URL: http://127.0.0.1:8000
+      CORS_ORIGIN: http://localhost:5173
+      JWT_ACCESS_SECRET: ci-access-secret
+      JWT_REFRESH_SECRET: ci-refresh-secret
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL: 7d
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Security scan (npm audit)
+        run: npm run security:scan
+
+  frontend:
+    name: Frontend Build, Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Security scan (npm audit)
+        run: npm run security:scan
+
+  ai-service:
+    name: AI Service Lint, Test, Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: ai-service/requirements-dev.txt
+      - name: Install python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install pip-audit
+      - name: Ruff
+        run: ruff check app
+      - name: Black (check)
+        run: black --check app
+      - name: Pytest
+        run: pytest
+      - name: Security scan (pip-audit)
+        run: pip-audit -r requirements.txt
