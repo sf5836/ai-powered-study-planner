@@ -117,8 +117,6 @@ function readPersistedBackendSessionId(): string | null {
   return window.localStorage.getItem("focusiq_active_session_id");
 }
 
-let pushEventInFlight = false;
-
 export const useSessionStore = create<SessionState>((set, get) => ({
   backendSessionId: readPersistedBackendSessionId(),
   isActive: false,
@@ -244,54 +242,45 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }));
   },
   pushEvent: async () => {
-    if (pushEventInFlight) {
-      return;
-    }
-
     const state = get();
     if (!state.backendSessionId || !state.isActive) {
       return;
     }
 
-    pushEventInFlight = true;
-    try {
-      const response = await withAuthToken((token) =>
-        sendStudyEvent(
-          state.backendSessionId as string,
-          {
-            secondOffset: state.elapsedSeconds,
-            elapsedSeconds: state.elapsedSeconds,
-            alertLevel: Math.min(3, state.alertLevel),
-            calibrationSeconds: state.calibrationSeconds,
-            lookingAway: state.gestureFlags.lookingAway,
-            yawning: state.gestureFlags.yawning,
-            slouching: state.gestureFlags.slouching,
-            phoneDetected: state.gestureFlags.phoneDetected,
-          },
-          token
-        )
-      );
+    const response = await withAuthToken((token) =>
+      sendStudyEvent(
+        state.backendSessionId as string,
+        {
+          secondOffset: state.elapsedSeconds,
+          elapsedSeconds: state.elapsedSeconds,
+          alertLevel: Math.min(3, state.alertLevel),
+          calibrationSeconds: state.calibrationSeconds,
+          lookingAway: state.gestureFlags.lookingAway,
+          yawning: state.gestureFlags.yawning,
+          slouching: state.gestureFlags.slouching,
+          phoneDetected: state.gestureFlags.phoneDetected,
+        },
+        token
+      )
+    );
 
-      const inference = response.inference;
-      const nextEmotion = (inference.emotion || "neutral") as EmotionLabel;
+    const inference = response.inference;
+    const nextEmotion = (inference.emotion || "neutral") as EmotionLabel;
 
-      set((current) => ({
-        focusScore: clampScore(inference.focusPercent),
-        studyReadinessScore: clampScore(inference.readinessScore),
-        currentEmotion: nextEmotion,
-        focusHistory: [...current.focusHistory, clampScore(inference.focusPercent)].slice(-60),
-        emotionHistory: [
-          ...current.emotionHistory,
-          {
-            timestamp: current.elapsedSeconds,
-            emotion: nextEmotion,
-            confidence: Number(inference.confidence || 0),
-          },
-        ].slice(-120),
-      }));
-    } finally {
-      pushEventInFlight = false;
-    }
+    set((current) => ({
+      focusScore: clampScore(inference.focusPercent),
+      studyReadinessScore: clampScore(inference.readinessScore),
+      currentEmotion: nextEmotion,
+      focusHistory: [...current.focusHistory, clampScore(inference.focusPercent)].slice(-60),
+      emotionHistory: [
+        ...current.emotionHistory,
+        {
+          timestamp: current.elapsedSeconds,
+          emotion: nextEmotion,
+          confidence: Number(inference.confidence || 0),
+        },
+      ].slice(-120),
+    }));
   },
   setAlertLevel: (level) => set({ alertLevel: level }),
   updateFocusScore: (score) => {

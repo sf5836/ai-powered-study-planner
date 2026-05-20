@@ -12,7 +12,6 @@ import SessionTimer from "../components/session/SessionTimer";
 import StudyReadinessCard from "../components/session/StudyReadinessCard";
 import TopicProgressBar from "../components/session/TopicProgressBar";
 import { useAlertEngine } from "../hooks/useAlertEngine";
-import { useSessionSignals } from "../hooks/useSessionSignals";
 import { useWebcam } from "../hooks/useWebcam";
 import { usePlannerStore } from "../stores/plannerStore";
 import { useSessionStore } from "../stores/sessionStore";
@@ -88,7 +87,6 @@ export default function SessionPage() {
 
   const { videoRef, isPermitted, isLoading, error, stopWebcam } = useWebcam();
   useAlertEngine();
-  useSessionSignals({ videoRef, isActive, isPaused, isPermitted });
 
   const [breakOpen, setBreakOpen] = useState(false);
   const [breakSeconds, setBreakSeconds] = useState(300);
@@ -178,10 +176,6 @@ export default function SessionPage() {
 
   useEffect(() => {
     if (!isActive || isPaused) {
-      return;
-    }
-
-    if (elapsedSeconds % 3 !== 0) {
       return;
     }
 
