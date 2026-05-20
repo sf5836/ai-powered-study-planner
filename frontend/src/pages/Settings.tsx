@@ -152,6 +152,20 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!previewOpen || !streamRef.current || !videoRef.current) {
+      return;
+    }
+
+    videoRef.current.srcObject = streamRef.current;
+    videoRef.current.muted = true;
+    videoRef.current.playsInline = true;
+    videoRef.current.autoplay = true;
+    videoRef.current
+      .play()
+      .catch(() => setWebcamError("Preview blocked by browser. Click the video to start."));
+  }, [previewOpen]);
+
   const avatarInitials = useMemo(() => toInitials(profileName || name), [name, profileName]);
 
   const triggerAvatarUpload = () => {
@@ -210,8 +224,14 @@ export default function SettingsPage() {
     setWebcamError(null);
 
     try {
+      const constraintsByResolution: Record<ResolutionOption, MediaTrackConstraints> = {
+        "480p": { width: { ideal: 640 }, height: { ideal: 480 } },
+        "720p": { width: { ideal: 1280 }, height: { ideal: 720 } },
+        "1080p": { width: { ideal: 1920 }, height: { ideal: 1080 } },
+      };
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: constraintsByResolution[resolution],
         audio: false,
       });
 
@@ -220,7 +240,11 @@ export default function SettingsPage() {
       setCountdown(10);
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current
+            ?.play()
+            .catch(() => setWebcamError("Preview blocked by browser. Click the video to start."));
+        };
       }
 
       countdownIntervalRef.current = window.setInterval(() => {
@@ -230,8 +254,15 @@ export default function SettingsPage() {
       closeTimeoutRef.current = window.setTimeout(() => {
         stopPreview();
       }, 10000);
-    } catch {
-      setWebcamError("Webcam permission denied or unavailable.");
+    } catch (error) {
+      const err = error as DOMException;
+      if (err.name === "NotAllowedError") {
+        setWebcamError("Webcam permission denied. Please allow access.");
+      } else if (err.name === "NotFoundError") {
+        setWebcamError("No webcam device detected.");
+      } else {
+        setWebcamError("Unable to start webcam preview.");
+      }
     }
   };
 
