@@ -47,6 +47,7 @@ export default function SessionPage() {
     currentEmotion,
     gestureFlags,
     gestureAvailable,
+    gestureSamples,
     emotionHistory,
     sessionNotes,
     calibrationSeconds,
@@ -72,6 +73,7 @@ export default function SessionPage() {
       currentEmotion: state.currentEmotion,
       gestureFlags: state.gestureFlags,
       gestureAvailable: state.gestureAvailable,
+      gestureSamples: state.gestureSamples,
       emotionHistory: state.emotionHistory,
       sessionNotes: state.sessionNotes,
       calibrationSeconds: state.calibrationSeconds,
@@ -214,6 +216,84 @@ export default function SessionPage() {
   }, [breakOpen, breakSeconds, resumeSession]);
 
   const status = focusStatus(focusScore);
+  const emotionBreakdown = useMemo(() => {
+    if (emotionHistory.length === 0) {
+      return null;
+    }
+
+    const sorted = [...emotionHistory].sort((a, b) => a.timestamp - b.timestamp);
+    const latest = sorted[sorted.length - 1].timestamp;
+    const windowStart = Math.max(0, latest - 60);
+    const counts = {
+      happy: 0,
+      neutral: 0,
+      confused: 0,
+      bored: 0,
+      stressed: 0,
+      tired: 0,
+      frustrated: 0,
+    };
+
+    let total = 0;
+    for (let index = 0; index < sorted.length; index += 1) {
+      const event = sorted[index];
+      const next = sorted[index + 1];
+      const start = Math.max(event.timestamp, windowStart);
+      const end = Math.max(start, Math.min(next ? next.timestamp : latest, latest));
+      const duration = end - start;
+      if (duration <= 0 || event.timestamp < windowStart) {
+        continue;
+      }
+      counts[event.emotion] += duration;
+      total += duration;
+    }
+
+    if (total === 0) {
+      return null;
+    }
+
+    return Object.entries(counts).map(([emotion, duration]) => ({
+      emotion,
+      percent: Math.round((duration / total) * 100),
+    }));
+  }, [emotionHistory]);
+
+  const gestureSummary = useMemo(() => {
+    if (!gestureSamples.length) {
+      return null;
+    }
+
+    const sorted = [...gestureSamples].sort((a, b) => a.timestamp - b.timestamp);
+    const latest = sorted[sorted.length - 1].timestamp;
+    const windowStart = Math.max(0, latest - 60);
+    const windowed = sorted.filter((sample) => sample.timestamp >= windowStart);
+    if (windowed.length === 0) {
+      return null;
+    }
+
+    const count = {
+      lookingAway: 0,
+      slouching: 0,
+      yawning: 0,
+      phoneDetected: 0,
+      faceMissing: 0,
+    };
+
+    windowed.forEach((sample) => {
+      if (sample.lookingAway) count.lookingAway += 1;
+      if (sample.slouching) count.slouching += 1;
+      if (sample.yawning) count.yawning += 1;
+      if (sample.phoneDetected) count.phoneDetected += 1;
+      if (!sample.facePresent) count.faceMissing += 1;
+    });
+
+    return {
+      total: windowed.length,
+      ...count,
+      headTurn: windowed[windowed.length - 1]?.headTurn ?? "unknown",
+      distance: windowed[windowed.length - 1]?.distance ?? "unknown",
+    };
+  }, [gestureSamples]);
 
   return (
     <section className="relative p-4 sm:p-6">
@@ -281,6 +361,16 @@ export default function SessionPage() {
             ) : (
               <div className="h-5 w-full rounded-full bg-gray-200 dark:bg-gray-700" />
             )}
+            {isActive && emotionBreakdown && (
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-300 sm:grid-cols-3">
+                {emotionBreakdown.map((entry) => (
+                  <div key={entry.emotion} className="flex items-center justify-between rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">
+                    <span className="capitalize">{entry.emotion}</span>
+                    <span className="font-semibold">{entry.percent}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </article>
         </div>
 
@@ -305,7 +395,24 @@ export default function SessionPage() {
             <p className="mb-2 text-xs text-gray-500 dark:text-gray-300">Gesture Detection</p>
             {isActive ? (
               gestureAvailable ? (
-                <GestureStatusRow flags={gestureFlags} />
+                <div className="space-y-3">
+                  <GestureStatusRow flags={gestureFlags} />
+                  {gestureSummary && (
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-300 sm:grid-cols-3">
+                      <div className="rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">
+                        Looking away: {Math.round((gestureSummary.lookingAway / gestureSummary.total) * 100)}%
+                      </div>
+                      <div className="rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">
+                        Slouching: {Math.round((gestureSummary.slouching / gestureSummary.total) * 100)}%
+                      </div>
+                      <div className="rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">
+                        Face missing: {Math.round((gestureSummary.faceMissing / gestureSummary.total) * 100)}%
+                      </div>
+                      <div className="rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">Head turn: {gestureSummary.headTurn}</div>
+                      <div className="rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">Distance: {gestureSummary.distance}</div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-300">Gesture detection is unavailable in this browser.</p>
               )

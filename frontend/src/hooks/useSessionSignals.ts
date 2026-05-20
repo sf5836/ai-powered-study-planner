@@ -24,17 +24,22 @@ type UseSessionSignalsOptions = {
 export function useSessionSignals({ videoRef, isActive, isPaused, intervalMs = 1200 }: UseSessionSignalsOptions): void {
   const updateGestureFlags = useSessionStore((state) => state.updateGestureFlags);
   const setGestureAvailable = useSessionStore((state) => state.setGestureAvailable);
+  const addGestureSample = useSessionStore((state) => state.addGestureSample);
   const detectorRef = useRef<FaceDetection | null>(null);
   const resultRef = useRef<FaceDetectionResult | null>(null);
   const inFlightRef = useRef(false);
+  const missingFaceCountRef = useRef(0);
+  const presentFaceCountRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const initDetector = async () => {
       try {
+        const baseUrl = import.meta.env.BASE_URL || "/";
+        const assetBase = `${baseUrl}mediapipe/face_detection/`;
         const detector = new FaceDetection({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`,
+          locateFile: (file) => `${assetBase}${file}`,
         });
 
         detector.setOptions({
@@ -98,25 +103,57 @@ export function useSessionSignals({ videoRef, isActive, isPaused, intervalMs = 1
         await detector.send({ image: video });
         const detections = resultRef.current?.detections ?? [];
         const box = detections[0]?.boundingBox;
-        if (!box) {
-          updateGestureFlags({ lookingAway: true, slouching: false, yawning: false, phoneDetected: false });
-          return;
+        const facePresent = Boolean(box);
+        if (!facePresent) {
+          missingFaceCountRef.current += 1;
+          presentFaceCountRef.current = 0;
+        } else {
+          presentFaceCountRef.current += 1;
+          missingFaceCountRef.current = 0;
         }
 
         const videoWidth = Math.max(1, video.videoWidth || 1);
         const videoHeight = Math.max(1, video.videoHeight || 1);
-        const xCenter = Number(box.xCenter || 0);
-        const width = Number(box.width || 0);
-        const height = Number(box.height || 0);
-        const isNormalized = xCenter <= 1 && width <= 1 && height <= 1;
-        const centerRatio = isNormalized ? xCenter : xCenter / videoWidth;
-        const sizeRatio = isNormalized ? height : height / videoHeight;
+        const xCenter = Number(box?.xCenter || 0);
+        const width = Number(box?.width || 0);
+        const height = Number(box?.height || 0);
+        const isNormalized = facePresent && xCenter <= 1 && width <= 1 && height <= 1;
+        const centerRatio = facePresent ? (isNormalized ? xCenter : xCenter / videoWidth) : 0.5;
+        const sizeRatio = facePresent ? (isNormalized ? height : height / videoHeight) : 0;
+        const lookingAway = missingFaceCountRef.current >= 2 || centerRatio < 0.2 || centerRatio > 0.8;
+        const slouching = sizeRatio > 0 && sizeRatio < 0.28;
+        const headTurn = !facePresent
+          ? "unknown"
+          : centerRatio < 0.35
+            ? "left"
+            : centerRatio > 0.65
+              ? "right"
+              : "center";
+        const distance = !facePresent
+          ? "unknown"
+          : sizeRatio > 0.45
+            ? "near"
+            : sizeRatio < 0.25
+              ? "far"
+              : "ok";
 
         updateGestureFlags({
-          lookingAway: centerRatio < 0.2 || centerRatio > 0.8,
-          slouching: sizeRatio < 0.28,
+          lookingAway,
+          slouching,
           yawning: false,
           phoneDetected: false,
+        });
+
+        const timestamp = useSessionStore.getState().elapsedSeconds;
+        addGestureSample({
+          timestamp,
+          lookingAway,
+          slouching,
+          yawning: false,
+          phoneDetected: false,
+          facePresent,
+          headTurn,
+          distance,
         });
       } catch {
         updateGestureFlags({ lookingAway: false, slouching: false, yawning: false, phoneDetected: false });
@@ -128,5 +165,5 @@ export function useSessionSignals({ videoRef, isActive, isPaused, intervalMs = 1
     return () => {
       window.clearInterval(timer);
     };
-  }, [intervalMs, isActive, isPaused, updateGestureFlags, videoRef]);
+  }, [addGestureSample, intervalMs, isActive, isPaused, updateGestureFlags, videoRef]);
 }

@@ -20,6 +20,13 @@ export type GestureFlags = {
   phoneDetected: boolean;
 };
 
+export type GestureSample = GestureFlags & {
+  timestamp: number;
+  facePresent: boolean;
+  headTurn: "left" | "right" | "center" | "unknown";
+  distance: "near" | "ok" | "far" | "unknown";
+};
+
 export type SessionState = {
   backendSessionId: string | null;
   isActive: boolean;
@@ -34,6 +41,7 @@ export type SessionState = {
   alertLevel: 0 | 1 | 2 | 3 | 4;
   gestureFlags: GestureFlags;
   gestureAvailable: boolean;
+  gestureSamples: GestureSample[];
   focusHistory: number[];
   emotionHistory: EmotionEvent[];
   sessionNotes: string;
@@ -49,6 +57,7 @@ export type SessionState = {
   updateEmotion: (emotion: EmotionLabel, confidence: number) => void;
   updateGestureFlags: (flags: Partial<GestureFlags>) => void;
   setGestureAvailable: (available: boolean) => void;
+  addGestureSample: (sample: GestureSample) => void;
   appendNote: (text: string) => void;
   setElapsedSeconds: (seconds: number) => void;
   setCalibrationSeconds: (seconds: number) => void;
@@ -79,6 +88,7 @@ function getDefaultSessionState(backendSessionId: string | null) {
     alertLevel: 0 as const,
     gestureFlags: defaultGestures,
     gestureAvailable: false,
+    gestureSamples: [] as GestureSample[],
     focusHistory: [] as number[],
     emotionHistory: [] as EmotionEvent[],
     sessionNotes: "",
@@ -289,6 +299,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             alertLevel: 0,
             gestureFlags: defaultGestures,
             gestureAvailable: current.gestureAvailable,
+            gestureSamples: [],
             focusHistory: [],
             emotionHistory: [],
             sessionNotes: "",
@@ -359,6 +370,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       },
     })),
   setGestureAvailable: (available) => set({ gestureAvailable: available }),
+  addGestureSample: (sample) =>
+    set((state) => ({
+      gestureSamples: [...state.gestureSamples, sample].slice(-120),
+    })),
   appendNote: (text) => set({ sessionNotes: text }),
   setElapsedSeconds: (seconds) => set({ elapsedSeconds: Math.max(0, seconds) }),
   setCalibrationSeconds: (seconds) => set({ calibrationSeconds: Math.max(0, Math.min(30, seconds)) }),
