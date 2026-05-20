@@ -11,7 +11,10 @@ function dayDiff(deadline: Date, today: Date): number {
 }
 
 function badge(dayDelta: number, deadline: Date): { text: string; className: string } {
-  if (dayDelta <= 0) {
+  if (dayDelta < 0) {
+    return { text: "Overdue", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" };
+  }
+  if (dayDelta === 0) {
     return { text: "Today!", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200" };
   }
   if (dayDelta < 2) {
@@ -32,7 +35,10 @@ export default function UpcomingDeadlines() {
   const plannerSessions = usePlannerStore((state) => state.sessions);
 
   const today = new Date();
+  const todayStart = new Date(today);
+  todayStart.setHours(0, 0, 0, 0);
   const list = [...plannerSessions]
+    .filter((session) => new Date(session.date).getTime() >= todayStart.getTime())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5)
     .map((session) => {

@@ -5,6 +5,7 @@ import Sidebar from "./components/layout/Sidebar";
 import TopBar from "./components/layout/TopBar";
 import PageLoadingSpinner from "./components/ui/PageLoadingSpinner";
 import { useAuthStore } from "./store/authStore";
+import { useUserStore } from "./stores/userStore";
 
 const DashboardPage = lazy(() => import("./pages/Dashboard"));
 const SessionPage = lazy(() => import("./pages/Session"));
@@ -34,9 +35,21 @@ function ProtectedRoute() {
 }
 
 function App() {
+  const authUser = useAuthStore((state) => state.user);
+
   useEffect(() => {
     void useAuthStore.getState().hydrate();
   }, []);
+
+  useEffect(() => {
+    if (!authUser) {
+      return;
+    }
+
+    const userStore = useUserStore.getState();
+    userStore.setName(authUser.fullName || "User");
+    userStore.setEmail(authUser.email || "");
+  }, [authUser]);
 
   return (
     <Suspense fallback={<PageLoadingSpinner />}>
