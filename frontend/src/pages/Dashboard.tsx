@@ -1,9 +1,13 @@
+import { useEffect, useRef } from "react";
 import LastSessionCard from "../components/dashboard/LastSessionCard";
 import QuickStartButton from "../components/dashboard/QuickStartButton";
 import StatsRow from "../components/dashboard/StatsRow";
 import StreakCalendar from "../components/dashboard/StreakCalendar";
 import TodayScheduleStrip from "../components/dashboard/TodayScheduleStrip";
 import UpcomingDeadlines from "../components/dashboard/UpcomingDeadlines";
+import { usePlannerStore } from "../stores/plannerStore";
+import { useSessionsStore } from "../stores/sessionsStore";
+import { useAuthStore } from "../store/authStore";
 
 function getGreetingHour(date: Date): string {
   const hour = date.getHours();
@@ -17,6 +21,23 @@ function getGreetingHour(date: Date): string {
 }
 
 export default function DashboardPage() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const loadPlannerData = usePlannerStore((state) => state.loadPlannerData);
+  const loadRecords = useSessionsStore((state) => state.loadRecords);
+  const loadSummary = useSessionsStore((state) => state.loadSummary);
+  const didLoad = useRef(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || didLoad.current) {
+      return;
+    }
+
+    didLoad.current = true;
+    void loadPlannerData();
+    void loadRecords();
+    void loadSummary();
+  }, [isAuthenticated, loadPlannerData, loadRecords, loadSummary]);
+
   const now = new Date();
   const dateLabel = now.toLocaleDateString([], {
     weekday: "long",

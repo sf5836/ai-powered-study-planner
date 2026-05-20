@@ -89,7 +89,7 @@ export default function CalendarGrid() {
 
   return (
     <Tooltip.Provider delayDuration={150}>
-      <section className="relative flex-1 overflow-auto bg-white dark:bg-[#0D1B40]">
+      <section className="relative flex-1 overflow-auto bg-white pb-6 dark:bg-[#0D1B40]">
         <div className="min-w-[860px]">
           <div className="grid grid-cols-[76px_repeat(7,minmax(110px,1fr))] border-b border-gray-200 dark:border-gray-700">
             <div className="border-r border-gray-200 p-2 dark:border-gray-700" />
@@ -161,7 +161,7 @@ export default function CalendarGrid() {
               className="absolute left-[76px] right-0 top-0 grid"
               style={{
                 gridTemplateColumns: "repeat(7,minmax(110px,1fr))",
-                gridTemplateRows: "repeat(17,60px)",
+                gridTemplateRows: `repeat(${ROWS},60px)`,
               }}
             >
               {plannerSessions.map((session) => {

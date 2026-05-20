@@ -8,6 +8,8 @@ import { usePlannerStore } from "../stores/plannerStore";
 export default function PlannerPage() {
   const [subjectsOpen, setSubjectsOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [lastGeneratedCount, setLastGeneratedCount] = useState<number | null>(null);
+  const [lastGeneratedAt, setLastGeneratedAt] = useState<string | null>(null);
   const didLoadPlannerData = useRef(false);
 
   const generateWeeklyPlan = usePlannerStore((state) => state.generateWeeklyPlan);
@@ -28,16 +30,30 @@ export default function PlannerPage() {
       {error && <p className="px-4 py-2 text-sm text-red-600">{error}</p>}
 
       <div className="hidden items-center justify-end border-b border-gray-200 px-4 py-2 dark:border-gray-700 lg:flex">
-        <button
-          type="button"
-          onClick={() => {
-            void generateWeeklyPlan();
-          }}
-          className="inline-flex items-center gap-1 rounded-btn border border-cyan px-3 py-1.5 text-xs font-semibold text-cyan"
-        >
-          <Sparkles size={14} />
-          Generate Weekly Plan
-        </button>
+        <div className="flex items-center gap-3">
+          {lastGeneratedCount !== null && lastGeneratedAt && (
+            <span className="text-xs text-gray-500 dark:text-gray-300">
+              Generated {lastGeneratedCount} session{lastGeneratedCount === 1 ? "" : "s"} at {lastGeneratedAt}
+            </span>
+          )}
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={async () => {
+              try {
+                const count = await generateWeeklyPlan();
+                setLastGeneratedCount(count);
+                setLastGeneratedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+              } catch {
+                // Error is already surfaced via planner store state.
+              }
+            }}
+            className="inline-flex items-center gap-1 rounded-btn border border-cyan px-3 py-1.5 text-xs font-semibold text-cyan disabled:opacity-50"
+          >
+            <Sparkles size={14} />
+            Generate Weekly Plan
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-gray-700 lg:hidden">
@@ -52,10 +68,17 @@ export default function PlannerPage() {
 
         <button
           type="button"
-          onClick={() => {
-            void generateWeeklyPlan();
+          disabled={isLoading}
+          onClick={async () => {
+            try {
+              const count = await generateWeeklyPlan();
+              setLastGeneratedCount(count);
+              setLastGeneratedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+            } catch {
+              // Error is already surfaced via planner store state.
+            }
           }}
-          className="inline-flex items-center gap-1 rounded-btn border border-cyan px-2.5 py-1.5 text-xs font-semibold text-cyan"
+          className="inline-flex items-center gap-1 rounded-btn border border-cyan px-2.5 py-1.5 text-xs font-semibold text-cyan disabled:opacity-50"
         >
           <Sparkles size={14} />
           AI Plan

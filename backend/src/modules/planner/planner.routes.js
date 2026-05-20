@@ -168,9 +168,24 @@ router.post("/generate", authMiddleware, async (req, res, next) => {
       filter._id = { $in: topicIds };
     }
 
-    const topics = await Topic.find(filter).sort({ deadline: 1, difficulty: -1 }).limit(200);
+    let topics = await Topic.find(filter).sort({ deadline: 1, difficulty: -1 }).limit(200);
     if (topics.length === 0) {
-      return res.status(400).json({ message: "No topics available for generation" });
+      const subjects = await Subject.find({ userId: req.user.sub }).sort({ createdAt: -1 }).limit(200);
+      if (subjects.length === 0) {
+        return res.status(400).json({ message: "No topics or subjects available for generation" });
+      }
+
+      const fallbackDeadline = new Date();
+      fallbackDeadline.setDate(fallbackDeadline.getDate() + 14);
+
+      topics = subjects.map((subject) => ({
+        _id: `subject-${subject._id}`,
+        subjectId: subject._id,
+        name: `${subject.name} Study`,
+        deadline: fallbackDeadline,
+        difficulty: 3,
+        preparationPercent: 50,
+      }));
     }
 
     const payload = {
