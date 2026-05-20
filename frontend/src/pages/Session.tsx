@@ -276,6 +276,7 @@ export default function SessionPage() {
       slouching: 0,
       yawning: 0,
       phoneDetected: 0,
+      eyesClosed: 0,
       faceMissing: 0,
     };
 
@@ -284,6 +285,7 @@ export default function SessionPage() {
       if (sample.slouching) count.slouching += 1;
       if (sample.yawning) count.yawning += 1;
       if (sample.phoneDetected) count.phoneDetected += 1;
+      if (sample.eyesClosed) count.eyesClosed += 1;
       if (!sample.facePresent) count.faceMissing += 1;
     });
 
@@ -331,10 +333,16 @@ export default function SessionPage() {
                 {isActive && <EmotionBadge emotion={currentEmotion} />}
               </div>
 
-              {isActive && (
+              {isActive && !isPaused && (
                 <div className="absolute right-2 top-2 inline-flex items-center gap-2 rounded-full bg-black/70 px-2.5 py-1 text-xs font-medium text-white">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
                   AI Active
+                </div>
+              )}
+              {isActive && isPaused && (
+                <div className="absolute right-2 top-2 inline-flex items-center gap-2 rounded-full bg-black/70 px-2.5 py-1 text-xs font-medium text-white">
+                  <span className="h-2 w-2 rounded-full bg-yellow-400" />
+                  Paused
                 </div>
               )}
             </div>
@@ -403,6 +411,9 @@ export default function SessionPage() {
                         Looking away: {Math.round((gestureSummary.lookingAway / gestureSummary.total) * 100)}%
                       </div>
                       <div className="rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">
+                        Eyes closed: {Math.round((gestureSummary.eyesClosed / gestureSummary.total) * 100)}%
+                      </div>
+                      <div className="rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">
                         Slouching: {Math.round((gestureSummary.slouching / gestureSummary.total) * 100)}%
                       </div>
                       <div className="rounded-btn bg-gray-50 px-2 py-1 dark:bg-gray-900">
@@ -421,20 +432,7 @@ export default function SessionPage() {
             )}
           </article>
 
-          <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
-            <label htmlFor="session-notes" className="mb-2 block text-sm font-medium text-navy dark:text-white">
-              Session Notes
-            </label>
-            <textarea
-              id="session-notes"
-              value={sessionNotes}
-              onChange={(event) => appendNote(event.target.value)}
-              placeholder="Type your notes here…"
-              className="min-h-[100px] w-full resize-y rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition hover:border-gray-400 focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/35 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-            />
-          </article>
-
-          <div className="mt-auto flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3">
             {isPaused ? (
               <button
                 type="button"
@@ -484,6 +482,19 @@ export default function SessionPage() {
               End Session
             </button>
           </div>
+
+          <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
+            <label htmlFor="session-notes" className="mb-2 block text-sm font-medium text-navy dark:text-white">
+              Session Notes
+            </label>
+            <textarea
+              id="session-notes"
+              value={sessionNotes}
+              onChange={(event) => appendNote(event.target.value)}
+              placeholder="Type your notes here…"
+              className="min-h-[100px] w-full resize-y rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition hover:border-gray-400 focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/35 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+          </article>
         </div>
       </div>
 

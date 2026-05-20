@@ -17,13 +17,22 @@ def predict_emotion(signals: InferenceSignals) -> EmotionPredictResponse:
 
     if signals.phoneDetected:
         label = "bored"
-        confidence = 0.84
+        confidence = 0.86
     elif signals.yawning and signals.slouching:
         label = "tired"
-        confidence = 0.82
-    elif distractions >= 2:
+        confidence = 0.84
+    elif signals.yawning:
+        label = "tired"
+        confidence = 0.78
+    elif signals.slouching and signals.lookingAway:
+        label = "stressed"
+        confidence = 0.8
+    elif signals.lookingAway and distractions >= 2:
         label = "confused"
         confidence = 0.78
+    elif signals.alertLevel >= 3:
+        label = "frustrated"
+        confidence = 0.76
     elif distractions == 0 and signals.alertLevel == 0:
         label = "happy"
         confidence = 0.76

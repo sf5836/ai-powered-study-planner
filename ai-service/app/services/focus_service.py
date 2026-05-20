@@ -2,10 +2,10 @@ from app.schemas.focus_schema import FocusPredictResponse, InferenceSignals
 
 
 def compute_focus_score(signals: InferenceSignals) -> FocusPredictResponse:
-    score = 70
+    score = 72
 
     if signals.lookingAway:
-        score -= 35
+        score -= 42
     if signals.yawning:
         score -= 20
     if signals.slouching:

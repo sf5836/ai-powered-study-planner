@@ -1,4 +1,4 @@
-import { EyeOff, Smartphone, UserX, Wind } from "lucide-react";
+import { Eye, EyeOff, Smartphone, UserX, Wind } from "lucide-react";
 import type { GestureFlags } from "../../stores/sessionStore";
 
 type GestureStatusRowProps = {
@@ -8,6 +8,7 @@ type GestureStatusRowProps = {
 export default function GestureStatusRow({ flags }: GestureStatusRowProps) {
   const items = [
     { key: "lookingAway", label: "Looking Away", active: flags.lookingAway, icon: EyeOff },
+    { key: "eyesClosed", label: "Eyes Closed", active: flags.eyesClosed, icon: Eye },
     { key: "yawning", label: "Yawning", active: flags.yawning, icon: Wind },
     { key: "slouching", label: "Slouching", active: flags.slouching, icon: UserX },
     { key: "phoneDetected", label: "Phone", active: flags.phoneDetected, icon: Smartphone },

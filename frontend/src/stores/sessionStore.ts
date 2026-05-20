@@ -18,6 +18,7 @@ export type GestureFlags = {
   yawning: boolean;
   slouching: boolean;
   phoneDetected: boolean;
+  eyesClosed: boolean;
 };
 
 export type GestureSample = GestureFlags & {
@@ -71,6 +72,7 @@ const defaultGestures: GestureFlags = {
   yawning: false,
   slouching: false,
   phoneDetected: false,
+  eyesClosed: false,
 };
 
 function getDefaultSessionState(backendSessionId: string | null) {
@@ -236,17 +238,27 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
   pauseSession: async () => {
     const state = get();
-    if (state.backendSessionId) {
-      await withAuthToken((token) => pauseStudySession(state.backendSessionId as string, token));
-    }
     set({ isPaused: true });
+    if (state.backendSessionId) {
+      try {
+        await withAuthToken((token) => pauseStudySession(state.backendSessionId as string, token));
+      } catch (error) {
+        set({ isPaused: false });
+        throw error;
+      }
+    }
   },
   resumeSession: async () => {
     const state = get();
-    if (state.backendSessionId) {
-      await withAuthToken((token) => resumeStudySession(state.backendSessionId as string, token));
-    }
     set({ isPaused: false });
+    if (state.backendSessionId) {
+      try {
+        await withAuthToken((token) => resumeStudySession(state.backendSessionId as string, token));
+      } catch (error) {
+        set({ isPaused: true });
+        throw error;
+      }
+    }
   },
   endSession: async () => {
     const state = get();
