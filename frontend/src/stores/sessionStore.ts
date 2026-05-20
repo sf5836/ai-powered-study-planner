@@ -52,6 +52,7 @@ export type SessionState = {
   setCalibrationSeconds: (seconds: number) => void;
   setStudyReadinessScore: (score: number) => void;
   setCurrentSession: (subject: string, topic: string) => void;
+  resetSessionState: () => void;
 };
 
 const defaultGestures: GestureFlags = {
@@ -61,12 +62,58 @@ const defaultGestures: GestureFlags = {
   phoneDetected: false,
 };
 
+function getDefaultSessionState(backendSessionId: string | null) {
+  return {
+    backendSessionId,
+    isActive: false,
+    isPaused: false,
+    startTime: null,
+    elapsedSeconds: 0,
+    currentSubject: "",
+    currentTopic: "",
+    focusScore: 70,
+    studyReadinessScore: 0,
+    currentEmotion: "neutral" as EmotionLabel,
+    alertLevel: 0 as const,
+    gestureFlags: defaultGestures,
+    focusHistory: [] as number[],
+    emotionHistory: [] as EmotionEvent[],
+    sessionNotes: "",
+    calibrationSeconds: 0,
+  };
+}
+
 function clampScore(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function seededReadiness(): number {
   return Math.floor(45 + Math.random() * 45);
+}
+
+function computeElapsedSeconds(active: { startedAt?: string; totalPausedSeconds?: number; status?: string; pausedAt?: string | null }): number {
+  if (!active?.startedAt) {
+    return 0;
+  }
+
+  const startedAtMs = new Date(active.startedAt).getTime();
+  if (Number.isNaN(startedAtMs)) {
+    return 0;
+  }
+
+  const nowMs = Date.now();
+  const totalPausedSeconds = Math.max(0, Number(active.totalPausedSeconds || 0));
+  let pausedSeconds = 0;
+
+  if (active.status === "paused" && active.pausedAt) {
+    const pausedAtMs = new Date(active.pausedAt).getTime();
+    if (!Number.isNaN(pausedAtMs)) {
+      pausedSeconds = Math.max(0, Math.round((nowMs - pausedAtMs) / 1000));
+    }
+  }
+
+  const elapsed = Math.round((nowMs - startedAtMs) / 1000) - totalPausedSeconds - pausedSeconds;
+  return Math.max(0, elapsed);
 }
 
 async function withAuthToken<T>(operation: (token: string) => Promise<T>): Promise<T> {
@@ -118,22 +165,7 @@ function readPersistedBackendSessionId(): string | null {
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
-  backendSessionId: readPersistedBackendSessionId(),
-  isActive: false,
-  isPaused: false,
-  startTime: null,
-  elapsedSeconds: 0,
-  currentSubject: "",
-  currentTopic: "",
-  focusScore: 70,
-  studyReadinessScore: 0,
-  currentEmotion: "neutral",
-  alertLevel: 0,
-  gestureFlags: defaultGestures,
-  focusHistory: [],
-  emotionHistory: [],
-  sessionNotes: "",
-  calibrationSeconds: 0,
+  ...getDefaultSessionState(readPersistedBackendSessionId()),
   startSession: async (topic, subject, subjectId, topicId) => {
     let resolvedSubjectId = subjectId;
 
@@ -147,16 +179,25 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       throw new Error("Unable to resolve subject for session start");
     }
 
-    const response = await withAuthToken((token) =>
-      startStudySession(
-        {
-          subjectId: resolvedSubjectId,
-          topicId,
-          topicName: topic,
-        },
-        token
-      )
-    );
+    let response;
+    try {
+      response = await withAuthToken((token) =>
+        startStudySession(
+          {
+            subjectId: resolvedSubjectId,
+            topicId,
+            topicName: topic,
+          },
+          token
+        )
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        await get().syncActiveSession();
+        return;
+      }
+      throw error;
+    }
 
     const backendSessionId = response.item?._id ?? null;
     persistBackendSessionId(backendSessionId);
@@ -203,42 +244,52 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     void useSessionsStore.getState().loadRecords();
 
-    persistBackendSessionId(null);
-
-    set({
-      backendSessionId: null,
-      isActive: false,
-      isPaused: false,
-      startTime: null,
-      elapsedSeconds: 0,
-      currentSubject: "",
-      currentTopic: "",
-      focusScore: 70,
-      studyReadinessScore: 0,
-      currentEmotion: "neutral",
-      alertLevel: 0,
-      gestureFlags: defaultGestures,
-      focusHistory: [],
-      emotionHistory: [],
-      sessionNotes: "",
-      calibrationSeconds: 0,
-    });
+    get().resetSessionState();
   },
   syncActiveSession: async () => {
     const response = await withAuthToken((token) => getActiveStudySession(token));
     const active = response.item;
     if (!active) {
-      persistBackendSessionId(null);
+      get().resetSessionState();
       return;
     }
 
+    if (usePlannerStore.getState().subjects.length === 0) {
+      try {
+        await usePlannerStore.getState().loadPlannerData();
+      } catch {
+        // Keep going if planner data fails to load.
+      }
+    }
+
+    const subjects = usePlannerStore.getState().subjects;
+    const subjectName = subjects.find((entry) => entry.id === active.subjectId)?.name || "";
+    const nextElapsedSeconds = computeElapsedSeconds(active);
+    const state = get();
+    const isSameSession = state.backendSessionId === active._id;
+
     persistBackendSessionId(active._id);
-    set((state) => ({
+    set((current) => ({
       backendSessionId: active._id,
       isActive: true,
       isPaused: active.status === "paused",
-      startTime: state.startTime ?? new Date(active.startedAt),
-      currentTopic: state.currentTopic || active.topicName,
+      startTime: current.startTime ?? new Date(active.startedAt),
+      elapsedSeconds: isSameSession ? current.elapsedSeconds : nextElapsedSeconds,
+      currentTopic: current.currentTopic || active.topicName,
+      currentSubject: current.currentSubject || subjectName,
+      ...(isSameSession
+        ? {}
+        : {
+            focusScore: 70,
+            studyReadinessScore: 0,
+            currentEmotion: "neutral",
+            alertLevel: 0,
+            gestureFlags: defaultGestures,
+            focusHistory: [],
+            emotionHistory: [],
+            sessionNotes: "",
+            calibrationSeconds: 0,
+          }),
     }));
   },
   pushEvent: async () => {
@@ -312,4 +363,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       currentSubject: subject,
       currentTopic: topic,
     }),
+  resetSessionState: () => {
+    persistBackendSessionId(null);
+    set(getDefaultSessionState(null));
+  },
 }));

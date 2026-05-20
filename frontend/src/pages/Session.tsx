@@ -11,7 +11,9 @@ import GestureStatusRow from "../components/session/GestureStatusRow";
 import SessionTimer from "../components/session/SessionTimer";
 import StudyReadinessCard from "../components/session/StudyReadinessCard";
 import TopicProgressBar from "../components/session/TopicProgressBar";
+import QuickStartModal from "../components/dashboard/QuickStartModal";
 import { useAlertEngine } from "../hooks/useAlertEngine";
+import { useSessionSignals } from "../hooks/useSessionSignals";
 import { useWebcam } from "../hooks/useWebcam";
 import { usePlannerStore } from "../stores/plannerStore";
 import { useSessionStore } from "../stores/sessionStore";
@@ -87,12 +89,14 @@ export default function SessionPage() {
 
   const { videoRef, isPermitted, isLoading, error, stopWebcam } = useWebcam();
   useAlertEngine();
+  useSessionSignals({ videoRef, isActive, isPaused });
 
   const [breakOpen, setBreakOpen] = useState(false);
   const [breakSeconds, setBreakSeconds] = useState(300);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [startModalOpen, setStartModalOpen] = useState(false);
 
   useBeforeUnload(
     (event) => {
@@ -204,10 +208,27 @@ export default function SessionPage() {
 
   return (
     <section className="relative p-4 sm:p-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {!isActive && (
+        <div className="mb-5 rounded-card border border-dashed border-cyan/60 bg-white p-4 text-sm text-gray-600 shadow-sm dark:border-cyan/40 dark:bg-gray-900 dark:text-gray-200">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-navy dark:text-white">No active session yet</p>
+              <p className="text-xs text-gray-500 dark:text-gray-300">Start a session to enable realtime focus, emotion, and gesture tracking.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStartModalOpen(true)}
+              className="inline-flex items-center justify-center rounded-btn bg-cyan px-4 py-2 text-xs font-semibold text-white transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+            >
+              Start Session
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <div className="space-y-4">
           <article className="relative overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
-            <div className="relative h-[280px] w-full">
+            <div className="relative h-[320px] w-full sm:h-[360px] lg:h-[420px]">
               <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
 
               {(isLoading || !isPermitted || error) && (
@@ -230,7 +251,7 @@ export default function SessionPage() {
             </div>
           </article>
 
-          <article className="rounded-card bg-white p-4 text-center shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
+          <article className="rounded-card bg-white p-4 text-center shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 sm:min-h-[220px]">
             <p className="mb-3 text-sm text-gray-500 dark:text-gray-300">Focus Score</p>
             <div className="flex justify-center">
               <FocusMeter score={focusScore} />
@@ -238,12 +259,12 @@ export default function SessionPage() {
             <p className={`text-sm font-semibold ${status.className}`}>{status.text}</p>
           </article>
 
-          <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
+          <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 sm:min-h-[120px]">
             <p className="mb-2 text-xs text-gray-500 dark:text-gray-300">Last 60s emotions</p>
             <EmotionTimeline history={emotionHistory} maxSeconds={60} />
           </article>
 
-          <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
+          <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 sm:min-h-[120px]">
             <p className="mb-2 text-xs text-gray-500 dark:text-gray-300">Gesture Detection</p>
             <GestureStatusRow flags={gestureFlags} />
           </article>
@@ -387,6 +408,8 @@ export default function SessionPage() {
       />
 
       <AlertOverlay />
+
+      <QuickStartModal open={startModalOpen} onOpenChange={setStartModalOpen} />
     </section>
   );
 }

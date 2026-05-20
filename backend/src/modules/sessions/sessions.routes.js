@@ -7,6 +7,8 @@ import { SessionFocusPoint } from "../../models/SessionFocusPoint.js";
 import { StudySession } from "../../models/StudySession.js";
 import { Subject } from "../../models/Subject.js";
 import { Topic } from "../../models/Topic.js";
+import { getSocketGateway } from "../../realtime/socket.gateway.js";
+import { SESSION_EVENTS } from "../../realtime/session.events.js";
 
 const router = Router();
 
@@ -133,6 +135,9 @@ router.post("/start", authMiddleware, async (req, res, next) => {
       status: "active",
     });
 
+    const io = getSocketGateway();
+    io?.emit(SESSION_EVENTS.START, { sessionId: String(item._id), status: item.status });
+
     return res.status(201).json({ item });
   } catch (error) {
     return next(error);
@@ -200,6 +205,16 @@ router.post("/:id/events", authMiddleware, async (req, res, next) => {
       }
     );
 
+    const io = getSocketGateway();
+    io?.emit(SESSION_EVENTS.UPDATE, {
+      sessionId: String(session._id),
+      focusPercent: clamp(Math.round(focusPercent), 0, 100),
+      readinessScore: clamp(Math.round(readinessScore), 0, 100),
+      emotion,
+      confidence: clamp(Math.round(confidence), 0, 100),
+      alertLevel: clamp(Math.round(alertLevel), 0, 3),
+    });
+
     return res.status(201).json({
       item,
       inference: {
@@ -240,6 +255,9 @@ router.post("/:id/pause", authMiddleware, async (req, res, next) => {
     item.pausedAt = new Date();
     await item.save();
 
+    const io = getSocketGateway();
+    io?.emit(SESSION_EVENTS.UPDATE, { sessionId: String(item._id), status: item.status });
+
     return res.json({ item });
   } catch (error) {
     return next(error);
@@ -271,6 +289,9 @@ router.post("/:id/resume", authMiddleware, async (req, res, next) => {
     item.pausedAt = null;
     item.status = "active";
     await item.save();
+
+    const io = getSocketGateway();
+    io?.emit(SESSION_EVENTS.UPDATE, { sessionId: String(item._id), status: item.status });
 
     return res.json({ item });
   } catch (error) {
@@ -317,6 +338,9 @@ router.post("/:id/end", authMiddleware, async (req, res, next) => {
     item.alertCountL3 = stats.alertCountL3;
     item.notes = notes || item.notes;
     await item.save();
+
+    const io = getSocketGateway();
+    io?.emit(SESSION_EVENTS.END, { sessionId: String(item._id), status: item.status });
 
     // Ensure a report record exists before responding; processing remains async via worker.
     try {

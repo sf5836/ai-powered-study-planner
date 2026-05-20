@@ -4,6 +4,7 @@ import PageWrapper from "./components/layout/PageWrapper";
 import Sidebar from "./components/layout/Sidebar";
 import TopBar from "./components/layout/TopBar";
 import PageLoadingSpinner from "./components/ui/PageLoadingSpinner";
+import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { useAuthStore } from "./store/authStore";
 import { useUserStore } from "./stores/userStore";
 
@@ -36,6 +37,7 @@ function ProtectedRoute() {
 
 function App() {
   const authUser = useAuthStore((state) => state.user);
+  useRealtimeSync();
 
   useEffect(() => {
     void useAuthStore.getState().hydrate();

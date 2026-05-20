@@ -4,6 +4,7 @@ import { authMiddleware } from "../../middleware/auth.js";
 import { PlannerSession } from "../../models/PlannerSession.js";
 import { Subject } from "../../models/Subject.js";
 import { Topic } from "../../models/Topic.js";
+import { getSocketGateway } from "../../realtime/socket.gateway.js";
 
 const router = Router();
 
@@ -68,6 +69,9 @@ router.post("/", authMiddleware, async (req, res, next) => {
       color: String(req.body.color),
     });
 
+    const io = getSocketGateway();
+    io?.emit("planner:subjects:changed", { userId: req.user.sub, subjectId: String(subject._id) });
+
     return res.status(201).json({ item: subject });
   } catch (error) {
     if (error.code === 11000) {
@@ -112,6 +116,9 @@ router.patch("/:id", authMiddleware, async (req, res, next) => {
       return res.status(404).json({ message: "Subject not found" });
     }
 
+    const io = getSocketGateway();
+    io?.emit("planner:subjects:changed", { userId: req.user.sub, subjectId: String(item._id) });
+
     return res.json({ item });
   } catch (error) {
     if (error.code === 11000) {
@@ -137,6 +144,9 @@ router.delete("/:id", authMiddleware, async (req, res, next) => {
       Topic.deleteMany({ userId: req.user.sub, subjectId: id }),
       PlannerSession.deleteMany({ userId: req.user.sub, subjectId: id }),
     ]);
+
+    const io = getSocketGateway();
+    io?.emit("planner:subjects:changed", { userId: req.user.sub, subjectId: id });
 
     return res.status(204).send();
   } catch (error) {

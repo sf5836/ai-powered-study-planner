@@ -7,6 +7,8 @@ export type StudySessionApi = {
   topicName: string;
   status: "active" | "paused" | "completed" | "aborted";
   startedAt: string;
+  pausedAt?: string | null;
+  totalPausedSeconds?: number;
   endedAt: string | null;
   durationMinutes: number;
   avgFocusPercent: number;

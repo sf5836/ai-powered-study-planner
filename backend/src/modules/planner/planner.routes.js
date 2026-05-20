@@ -5,6 +5,7 @@ import { authMiddleware } from "../../middleware/auth.js";
 import { PlannerSession } from "../../models/PlannerSession.js";
 import { Subject } from "../../models/Subject.js";
 import { Topic } from "../../models/Topic.js";
+import { getSocketGateway } from "../../realtime/socket.gateway.js";
 
 const router = Router();
 
@@ -149,6 +150,9 @@ router.post("/sessions", authMiddleware, async (req, res, next) => {
       date: new Date(session.date),
     });
 
+    const io = getSocketGateway();
+    io?.emit("planner:sessions:changed", { userId: req.user.sub, sessionId: String(item._id) });
+
     return res.status(201).json({ item });
   } catch (error) {
     return next(error);
@@ -226,6 +230,11 @@ router.post("/generate", authMiddleware, async (req, res, next) => {
       });
 
     const created = toInsert.length > 0 ? await PlannerSession.insertMany(toInsert) : [];
+
+    if (created.length > 0) {
+      const io = getSocketGateway();
+      io?.emit("planner:sessions:changed", { userId: req.user.sub, count: created.length });
+    }
 
     return res.status(201).json({
       weekStartDate,
@@ -328,6 +337,9 @@ router.patch("/sessions/:id", authMiddleware, async (req, res, next) => {
       { new: true, runValidators: true }
     );
 
+    const io = getSocketGateway();
+    io?.emit("planner:sessions:changed", { userId: req.user.sub, sessionId: String(item._id) });
+
     return res.json({ item });
   } catch (error) {
     return next(error);
@@ -345,6 +357,9 @@ router.delete("/sessions/:id", authMiddleware, async (req, res, next) => {
     if (result.deletedCount === 0) {
       return res.status(404).json({ message: "Planner session not found" });
     }
+
+    const io = getSocketGateway();
+    io?.emit("planner:sessions:changed", { userId: req.user.sub, sessionId: id });
 
     return res.status(204).send();
   } catch (error) {

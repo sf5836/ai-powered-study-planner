@@ -1,8 +1,10 @@
+import http from "http";
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { connectMongo } from "./config/mongo.js";
 import { connectRedis, redisClient } from "./config/redis.js";
 import { startReportWorker } from "./jobs/queue.js";
+import { attachSocketGateway } from "./realtime/socket.gateway.js";
 
 async function bootstrap() {
   try {
@@ -21,7 +23,10 @@ async function bootstrap() {
   }
 
   const app = createApp();
-  const server = app.listen(env.port, () => {
+  const server = http.createServer(app);
+  attachSocketGateway(server);
+
+  server.listen(env.port, () => {
     console.log(`Backend server running on http://localhost:${env.port}`);
   });
 
