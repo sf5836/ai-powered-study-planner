@@ -1,5 +1,5 @@
 import { CalendarPlus, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { usePlannerStore } from "../../stores/plannerStore";
 import { useSessionsStore } from "../../stores/sessionsStore";
@@ -36,6 +36,14 @@ function Panel({ onCloseMobile }: { onCloseMobile?: () => void }) {
     durationMinutes: 60,
     notes: "",
   });
+
+  useEffect(() => {
+    if (form.subjectId || subjects.length === 0) {
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, subjectId: subjects[0]?.id ?? "" }));
+  }, [form.subjectId, subjects]);
 
   const canSubmit = Boolean(form.subjectId && form.topicName.trim() && form.date && form.time);
 

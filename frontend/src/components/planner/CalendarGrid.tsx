@@ -9,7 +9,8 @@ import type { PlannerSession } from "../../types";
 import EditSessionModal from "./EditSessionModal";
 
 const START_HOUR = 6;
-const ROWS = 17;
+const END_HOUR = 22;
+const ROWS = END_HOUR - START_HOUR + 1;
 
 function sameDay(left: Date, right: Date): boolean {
   return (
