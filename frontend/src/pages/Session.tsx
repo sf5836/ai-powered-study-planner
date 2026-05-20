@@ -17,6 +17,7 @@ import { useSessionSignals } from "../hooks/useSessionSignals";
 import { useWebcam } from "../hooks/useWebcam";
 import { usePlannerStore } from "../stores/plannerStore";
 import { useSessionStore } from "../stores/sessionStore";
+import { useUserStore } from "../stores/userStore";
 
 function focusStatus(score: number): { text: string; className: string } {
   if (score >= 66) {
@@ -45,6 +46,7 @@ export default function SessionPage() {
     studyReadinessScore,
     currentEmotion,
     gestureFlags,
+    gestureAvailable,
     emotionHistory,
     sessionNotes,
     calibrationSeconds,
@@ -69,6 +71,7 @@ export default function SessionPage() {
       studyReadinessScore: state.studyReadinessScore,
       currentEmotion: state.currentEmotion,
       gestureFlags: state.gestureFlags,
+      gestureAvailable: state.gestureAvailable,
       emotionHistory: state.emotionHistory,
       sessionNotes: state.sessionNotes,
       calibrationSeconds: state.calibrationSeconds,
@@ -86,6 +89,7 @@ export default function SessionPage() {
   );
 
   const plannerSubjects = usePlannerStore((state) => state.subjects);
+  const defaultSessionLength = useUserStore((state) => state.defaultSessionLength);
 
   const { videoRef, isPermitted, isLoading, error, stopWebcam } = useWebcam();
   useAlertEngine();
@@ -153,6 +157,11 @@ export default function SessionPage() {
     const subject = plannerSubjects.find((entry) => entry.name === currentSubject);
     return subject?.color ?? "#1A2E6E";
   }, [currentSubject, plannerSubjects]);
+
+  const targetSeconds = Math.max(1, defaultSessionLength * 60);
+  const sessionProgress = isActive ? Math.min(100, Math.round((elapsedSeconds / targetSeconds) * 100)) : 0;
+  const displaySubject = isActive ? currentSubject || "Subject" : "No active subject";
+  const displayTopic = isActive ? currentTopic || "Session topic" : "No active topic";
 
   useEffect(() => {
     void syncActiveSession();
@@ -239,7 +248,7 @@ export default function SessionPage() {
               )}
 
               <div className="absolute left-2 top-2">
-                <EmotionBadge emotion={currentEmotion} />
+                {isActive && <EmotionBadge emotion={currentEmotion} />}
               </div>
 
               {isActive && (
@@ -253,32 +262,56 @@ export default function SessionPage() {
 
           <article className="rounded-card bg-white p-4 text-center shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 sm:min-h-[220px]">
             <p className="mb-3 text-sm text-gray-500 dark:text-gray-300">Focus Score</p>
-            <div className="flex justify-center">
-              <FocusMeter score={focusScore} />
-            </div>
-            <p className={`text-sm font-semibold ${status.className}`}>{status.text}</p>
+            {isActive ? (
+              <>
+                <div className="flex justify-center">
+                  <FocusMeter score={focusScore} />
+                </div>
+                <p className={`text-sm font-semibold ${status.className}`}>{status.text}</p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-300">Start a session to see realtime focus.</p>
+            )}
           </article>
 
           <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 sm:min-h-[120px]">
             <p className="mb-2 text-xs text-gray-500 dark:text-gray-300">Last 60s emotions</p>
-            <EmotionTimeline history={emotionHistory} maxSeconds={60} />
-          </article>
-
-          <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 sm:min-h-[120px]">
-            <p className="mb-2 text-xs text-gray-500 dark:text-gray-300">Gesture Detection</p>
-            <GestureStatusRow flags={gestureFlags} />
+            {isActive ? (
+              <EmotionTimeline history={emotionHistory} maxSeconds={60} />
+            ) : (
+              <div className="h-5 w-full rounded-full bg-gray-200 dark:bg-gray-700" />
+            )}
           </article>
         </div>
 
         <div className="flex flex-col gap-4">
-          <StudyReadinessCard score={studyReadinessScore} calibrationSeconds={calibrationSeconds} />
+          {isActive ? (
+            <StudyReadinessCard score={studyReadinessScore} calibrationSeconds={calibrationSeconds} />
+          ) : (
+            <article className="rounded-card bg-white p-4 text-sm text-gray-500 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:text-gray-300 dark:ring-white/10">
+              Start a session to begin calibration.
+            </article>
+          )}
 
           <article className="rounded-card bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
-            <SessionTimer />
+            {isActive ? <SessionTimer /> : <p className="text-center font-mono text-2xl text-gray-500 dark:text-gray-300">--:--:--</p>}
           </article>
 
           <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
-            <TopicProgressBar topicName={currentTopic || "Newton's Laws"} subject={currentSubject || "Physics"} subjectColor={subjectColor} percent={45} />
+            <TopicProgressBar topicName={displayTopic} subject={displaySubject} subjectColor={subjectColor} percent={sessionProgress} />
+          </article>
+
+          <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 sm:min-h-[120px]">
+            <p className="mb-2 text-xs text-gray-500 dark:text-gray-300">Gesture Detection</p>
+            {isActive ? (
+              gestureAvailable ? (
+                <GestureStatusRow flags={gestureFlags} />
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-300">Gesture detection is unavailable in this browser.</p>
+              )
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-300">Start a session to enable gesture checks.</p>
+            )}
           </article>
 
           <article className="rounded-card bg-white p-4 shadow-sm ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">

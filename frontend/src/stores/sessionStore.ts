@@ -33,6 +33,7 @@ export type SessionState = {
   currentEmotion: EmotionLabel;
   alertLevel: 0 | 1 | 2 | 3 | 4;
   gestureFlags: GestureFlags;
+  gestureAvailable: boolean;
   focusHistory: number[];
   emotionHistory: EmotionEvent[];
   sessionNotes: string;
@@ -47,6 +48,7 @@ export type SessionState = {
   updateFocusScore: (score: number) => void;
   updateEmotion: (emotion: EmotionLabel, confidence: number) => void;
   updateGestureFlags: (flags: Partial<GestureFlags>) => void;
+  setGestureAvailable: (available: boolean) => void;
   appendNote: (text: string) => void;
   setElapsedSeconds: (seconds: number) => void;
   setCalibrationSeconds: (seconds: number) => void;
@@ -76,6 +78,7 @@ function getDefaultSessionState(backendSessionId: string | null) {
     currentEmotion: "neutral" as EmotionLabel,
     alertLevel: 0 as const,
     gestureFlags: defaultGestures,
+    gestureAvailable: false,
     focusHistory: [] as number[],
     emotionHistory: [] as EmotionEvent[],
     sessionNotes: "",
@@ -285,6 +288,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             currentEmotion: "neutral",
             alertLevel: 0,
             gestureFlags: defaultGestures,
+            gestureAvailable: current.gestureAvailable,
             focusHistory: [],
             emotionHistory: [],
             sessionNotes: "",
@@ -354,6 +358,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         ...flags,
       },
     })),
+  setGestureAvailable: (available) => set({ gestureAvailable: available }),
   appendNote: (text) => set({ sessionNotes: text }),
   setElapsedSeconds: (seconds) => set({ elapsedSeconds: Math.max(0, seconds) }),
   setCalibrationSeconds: (seconds) => set({ calibrationSeconds: Math.max(0, Math.min(30, seconds)) }),

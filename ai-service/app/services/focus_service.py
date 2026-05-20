@@ -2,21 +2,18 @@ from app.schemas.focus_schema import FocusPredictResponse, InferenceSignals
 
 
 def compute_focus_score(signals: InferenceSignals) -> FocusPredictResponse:
-    score = 88
+    score = 70
 
     if signals.lookingAway:
-        score -= 18
+        score -= 35
     if signals.yawning:
-        score -= 14
-    if signals.slouching:
-        score -= 12
-    if signals.phoneDetected:
         score -= 20
+    if signals.slouching:
+        score -= 18
+    if signals.phoneDetected:
+        score -= 25
 
-    score -= signals.alertLevel * 4
-
-    if signals.calibrationSeconds < 15:
-        score += 4
+    score -= signals.alertLevel * 6
 
     bounded = max(0, min(score, 100))
     return FocusPredictResponse(score=int(bounded))

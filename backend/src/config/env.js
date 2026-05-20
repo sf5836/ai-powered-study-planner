@@ -13,7 +13,7 @@ export const env = {
   port: Number(process.env.PORT || 5000),
   mongoUri: required("MONGODB_URI", "mongodb://localhost:27017/studyplanner"),
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
-  aiServiceUrl: process.env.AI_SERVICE_URL || "http://localhost:8000",
+  aiServiceUrl: process.env.AI_SERVICE_URL || "http://localhost:8001",
   aiRequestTimeoutMs: Number(process.env.AI_REQUEST_TIMEOUT_MS || 1500),
   aiRequestRetries: Number(process.env.AI_REQUEST_RETRIES || 1),
   aiCircuitFailureThreshold: Number(process.env.AI_CIRCUIT_FAILURE_THRESHOLD || 3),

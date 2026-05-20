@@ -11,6 +11,8 @@
     "ci:check": "npm run build && npm run security:scan"
   },
   "dependencies": {
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/face_detection": "^0.4.1646424915",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-switch": "^1.2.6",

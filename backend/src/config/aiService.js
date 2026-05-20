@@ -93,7 +93,7 @@ function fallbackInference(features = {}) {
   const phoneDetected = Boolean(features.phoneDetected);
 
   const distractions = [lookingAway, yawning, slouching, phoneDetected].filter(Boolean).length;
-  const focusScore = Math.max(15, 88 - distractions * 18);
+  const focusScore = Math.max(10, 70 - distractions * 22 - (lookingAway ? 10 : 0));
 
   let emotionLabel = "neutral";
   if (focusScore < 40) {
@@ -104,7 +104,7 @@ function fallbackInference(features = {}) {
     emotionLabel = "happy";
   }
 
-  const readiness = Math.max(20, Math.min(95, 78 - distractions * 10));
+  const readiness = Math.max(15, Math.min(95, 75 - distractions * 15));
 
   return {
     source: "fallback",
