@@ -47,18 +47,6 @@ export function useSessionSignals({ videoRef, isActive, isPaused, intervalMs = 1
   const headTurnCountRef = useRef(0);
   const eyesClosedCountRef = useRef(0);
 
-  const resolveAssetBase = async (localPath: string, localBase: string, cdnBase: string) => {
-    try {
-      const response = await fetch(localPath, { method: "HEAD" });
-      if (response.ok) {
-        return localBase;
-      }
-    } catch {
-      // Ignore and fall back to CDN.
-    }
-    return cdnBase;
-  };
-
   const ensurePhoneModel = async () => {
     if (phoneModelRef.current) {
       return phoneModelRef.current;
@@ -85,12 +73,7 @@ export function useSessionSignals({ videoRef, isActive, isPaused, intervalMs = 1
     const initDetector = async () => {
       try {
         const baseUrl = import.meta.env.BASE_URL || "/";
-        const localBase = new URL("mediapipe/face_detection/", window.location.origin + baseUrl).toString();
-        const assetBase = await resolveAssetBase(
-          `${localBase}face_detection.js`,
-          localBase,
-          "https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/"
-        );
+        const assetBase = new URL("mediapipe/face_detection/", window.location.origin + baseUrl).toString();
         const detector = new FaceDetection({
           locateFile: (file) => `${assetBase}${file}`,
         });
@@ -122,12 +105,7 @@ export function useSessionSignals({ videoRef, isActive, isPaused, intervalMs = 1
     const initFaceMesh = async () => {
       try {
         const baseUrl = import.meta.env.BASE_URL || "/";
-        const localBase = new URL("mediapipe/face_mesh/", window.location.origin + baseUrl).toString();
-        const assetBase = await resolveAssetBase(
-          `${localBase}face_mesh.js`,
-          localBase,
-          "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/"
-        );
+        const assetBase = new URL("mediapipe/face_mesh/", window.location.origin + baseUrl).toString();
         const mesh = new FaceMesh({
           locateFile: (file) => `${assetBase}${file}`,
         });

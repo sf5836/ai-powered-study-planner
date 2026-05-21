@@ -8,6 +8,7 @@ import UpcomingDeadlines from "../components/dashboard/UpcomingDeadlines";
 import { usePlannerStore } from "../stores/plannerStore";
 import { useSessionsStore } from "../stores/sessionsStore";
 import { useAuthStore } from "../store/authStore";
+import { useUserStore } from "../stores/userStore";
 
 function getGreetingHour(date: Date): string {
   const hour = date.getHours();
@@ -22,6 +23,7 @@ function getGreetingHour(date: Date): string {
 
 export default function DashboardPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const name = useUserStore((state) => state.name);
   const loadPlannerData = usePlannerStore((state) => state.loadPlannerData);
   const loadRecords = useSessionsStore((state) => state.loadRecords);
   const loadSummary = useSessionsStore((state) => state.loadSummary);
@@ -48,7 +50,7 @@ export default function DashboardPage() {
   return (
     <section className="p-4 sm:p-6">
       <header>
-        <h1 className="font-display text-2xl text-navy dark:text-white sm:text-3xl">{getGreetingHour(now)}, Faraz 👋</h1>
+        <h1 className="font-display text-2xl text-navy dark:text-white sm:text-3xl">{getGreetingHour(now)}, {name || "User"} 👋</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">{dateLabel}</p>
       </header>
 
