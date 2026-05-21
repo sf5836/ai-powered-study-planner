@@ -2,6 +2,7 @@ import { Router } from "express";
 import mongoose from "mongoose";
 import { authMiddleware } from "../../middleware/auth.js";
 import { Notification } from "../../models/Notification.js";
+import { getSocketGateway } from "../../realtime/socket.gateway.js";
 
 const router = Router();
 
@@ -57,6 +58,9 @@ router.post("/", authMiddleware, async (req, res, next) => {
       scheduledFor,
       status: "pending",
     });
+
+    const io = getSocketGateway();
+    io?.emit("notifications:new", { item });
 
     return res.status(201).json({ item });
   } catch (error) {

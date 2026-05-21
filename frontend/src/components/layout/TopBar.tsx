@@ -2,7 +2,9 @@ import { Bell, LogOut, Menu, Moon, Settings, Sun, User } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
+import NotificationsPanel from "../notifications/NotificationsPanel";
 import { useAuthStore } from "../../store/authStore";
+import { useNotificationsStore } from "../../stores/notificationsStore";
 import { useUserStore } from "../../stores/userStore";
 
 type TopBarProps = {
@@ -42,7 +44,8 @@ export default function TopBar({ onMobileMenuToggle }: TopBarProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const hasNotifications = true;
+  const unreadCount = useNotificationsStore((state) => state.unreadCount());
+  const hasNotifications = unreadCount > 0;
 
   const initials = useMemo(() => {
     const trimmed = name.trim();
@@ -120,24 +123,11 @@ export default function TopBar({ onMobileMenuToggle }: TopBarProps) {
             </button>
 
             {notificationsOpen && (
-              <div
-                className="absolute right-0 top-11 z-50 w-[240px] rounded-card border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900"
-                role="menu"
-                aria-label="Notifications menu"
-              >
-                <p className="px-2 pb-1 text-xs font-semibold text-gray-500 dark:text-gray-300">Notifications</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotificationsOpen(false);
-                    navigate("/reports");
-                  }}
-                  className="w-full rounded-btn px-2 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/10"
-                  role="menuitem"
-                >
-                  View alerts in reports
-                </button>
-              </div>
+              <NotificationsPanel
+                onClose={() => {
+                  setNotificationsOpen(false);
+                }}
+              />
             )}
           </div>
 

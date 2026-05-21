@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { getSocket, disconnectSocket } from "../services/socket";
 import { useAuthStore } from "../store/authStore";
 import { usePlannerStore } from "../stores/plannerStore";
+import { useNotificationsStore } from "../stores/notificationsStore";
 import { useSessionStore } from "../stores/sessionStore";
 import { useSessionsStore } from "../stores/sessionsStore";
 
@@ -80,11 +81,20 @@ export function useRealtimeSync(): void {
       void useSessionsStore.getState().loadSummary();
     };
 
+    const handleNotification = (payload: { item?: unknown }) => {
+      if (payload?.item && typeof payload.item === "object") {
+        useNotificationsStore.getState().addNotification(payload.item as never);
+      } else {
+        void useNotificationsStore.getState().load();
+      }
+    };
+
     socket.on("planner:sessions:changed", handlePlannerChange);
     socket.on("planner:subjects:changed", handlePlannerChange);
     socket.on("session:start", handleSessionStart);
     socket.on("session:update", handleSessionUpdate);
     socket.on("session:end", handleSessionEnd);
+    socket.on("notifications:new", handleNotification);
 
     return () => {
       socket.off("planner:sessions:changed", handlePlannerChange);
@@ -92,6 +102,7 @@ export function useRealtimeSync(): void {
       socket.off("session:start", handleSessionStart);
       socket.off("session:update", handleSessionUpdate);
       socket.off("session:end", handleSessionEnd);
+      socket.off("notifications:new", handleNotification);
       disconnectSocket();
     };
   }, [token, userId]);

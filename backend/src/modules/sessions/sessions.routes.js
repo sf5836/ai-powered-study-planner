@@ -7,6 +7,7 @@ import { SessionFocusPoint } from "../../models/SessionFocusPoint.js";
 import { StudySession } from "../../models/StudySession.js";
 import { Subject } from "../../models/Subject.js";
 import { Topic } from "../../models/Topic.js";
+import { Notification } from "../../models/Notification.js";
 import { getSocketGateway } from "../../realtime/socket.gateway.js";
 import { SESSION_EVENTS } from "../../realtime/session.events.js";
 
@@ -134,6 +135,21 @@ router.post("/start", authMiddleware, async (req, res, next) => {
       startedAt: new Date(),
       status: "active",
     });
+
+    try {
+      const notification = await Notification.create({
+        userId: req.user.sub,
+        type: "system",
+        title: "Session started",
+        message: `You started ${topicName}. Stay focused!`,
+        status: "sent",
+      });
+
+      const io = getSocketGateway();
+      io?.emit("notifications:new", { item: notification });
+    } catch {
+      // Notifications should not block session start.
+    }
 
     const io = getSocketGateway();
     io?.emit(SESSION_EVENTS.START, { sessionId: String(item._id), status: item.status });
@@ -341,6 +357,20 @@ router.post("/:id/end", authMiddleware, async (req, res, next) => {
 
     const io = getSocketGateway();
     io?.emit(SESSION_EVENTS.END, { sessionId: String(item._id), status: item.status });
+
+    try {
+      const notification = await Notification.create({
+        userId: req.user.sub,
+        type: "system",
+        title: "Session complete",
+        message: `Great work! You completed ${item.topicName}.`,
+        status: "sent",
+      });
+
+      io?.emit("notifications:new", { item: notification });
+    } catch {
+      // Notifications should not block session completion.
+    }
 
     // Ensure a report record exists before responding; processing remains async via worker.
     try {
